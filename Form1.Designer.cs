@@ -281,10 +281,10 @@ namespace HostFileChecker
             dataGridViewCellStyle3.SelectionForeColor = System.Drawing.Color.White;
             this.colDelete.DefaultCellStyle = dataGridViewCellStyle3;
             this.colDelete.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
-            this.colDelete.Width = 44;
-            this.colDelete.MinimumWidth = 40;
+            this.colDelete.Width = 48;
+            this.colDelete.MinimumWidth = 44;
             this.colDelete.Resizable = System.Windows.Forms.DataGridViewTriState.False;
-            this.colDelete.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
+            this.colDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.colDelete.HeaderText = "";
             this.colDelete.Name = "colDelete";
             this.colDelete.Text = "X";
