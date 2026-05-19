@@ -256,13 +256,16 @@ namespace HostFileChecker
             this.colStatus.HeaderText = "Status";
             this.colStatus.Name = "colStatus";
             this.colStatus.ReadOnly = true;
-            this.colStatus.FillWeight = 14F;
+            this.colStatus.FillWeight = 18F;
             //
             // colFix
             //
             this.colFix.HeaderText = "";
             this.colFix.Name = "colFix";
-            this.colFix.FillWeight = 12F;
+            this.colFix.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            this.colFix.Width = 100;
+            this.colFix.MinimumWidth = 80;
+            this.colFix.Resizable = System.Windows.Forms.DataGridViewTriState.False;
             this.colFix.LinkBehavior = System.Windows.Forms.LinkBehavior.HoverUnderline;
             this.colFix.LinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(33)))), ((int)(((byte)(115)))), ((int)(((byte)(191)))));
             this.colFix.ActiveLinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(80)))), ((int)(((byte)(30)))));
@@ -277,8 +280,11 @@ namespace HostFileChecker
             dataGridViewCellStyle3.SelectionBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(190)))), ((int)(((byte)(50)))), ((int)(((byte)(50)))));
             dataGridViewCellStyle3.SelectionForeColor = System.Drawing.Color.White;
             this.colDelete.DefaultCellStyle = dataGridViewCellStyle3;
-            this.colDelete.FillWeight = 8F;
-            this.colDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.colDelete.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            this.colDelete.Width = 44;
+            this.colDelete.MinimumWidth = 40;
+            this.colDelete.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.colDelete.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
             this.colDelete.HeaderText = "";
             this.colDelete.Name = "colDelete";
             this.colDelete.Text = "X";
