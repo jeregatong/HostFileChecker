@@ -32,6 +32,7 @@ namespace HostFileChecker
         {
             hostsGrid.AutoGenerateColumns = false;
             hostsGrid.ScrollBars = ScrollBars.Vertical;
+            hostsGrid.Columns.Clear();
 
             colIp = new DataGridViewTextBoxColumn
             {
@@ -65,13 +66,45 @@ namespace HostFileChecker
                 ReadOnly = true,
                 FillWeight = 18F
             };
+            colFix = new DataGridViewLinkColumn
+            {
+                Name = "colFix",
+                HeaderText = "",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+                Width = 100,
+                MinimumWidth = 80,
+                Resizable = DataGridViewTriState.False,
+                LinkBehavior = LinkBehavior.HoverUnderline,
+                LinkColor = Color.FromArgb(33, 115, 191),
+                ActiveLinkColor = Color.FromArgb(200, 80, 30),
+                TrackVisitedState = false
+            };
+            colDelete = new DataGridViewButtonColumn
+            {
+                Name = "colDelete",
+                HeaderText = "",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+                Width = 48,
+                MinimumWidth = 44,
+                Resizable = DataGridViewTriState.False,
+                FlatStyle = FlatStyle.Flat,
+                Text = "X",
+                UseColumnTextForButtonValue = true,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter,
+                    BackColor = Color.FromArgb(220, 70, 70),
+                    Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                    ForeColor = Color.White,
+                    SelectionBackColor = Color.FromArgb(190, 50, 50),
+                    SelectionForeColor = Color.White
+                }
+            };
 
-            colFix.Width = 100;
-
-            hostsGrid.Columns.Insert(0, colIp);
-            hostsGrid.Columns.Insert(1, colHost);
-            hostsGrid.Columns.Insert(2, colResolved);
-            hostsGrid.Columns.Insert(3, colStatus);
+            hostsGrid.Columns.AddRange(new DataGridViewColumn[]
+            {
+                colIp, colHost, colResolved, colStatus, colFix, colDelete
+            });
         }
 
         // ---------- Model ----------
