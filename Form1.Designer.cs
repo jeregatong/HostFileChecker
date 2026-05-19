@@ -27,6 +27,7 @@ namespace HostFileChecker
         private System.Windows.Forms.DataGridViewTextBoxColumn colHost;
         private System.Windows.Forms.DataGridViewTextBoxColumn colResolved;
         private System.Windows.Forms.DataGridViewTextBoxColumn colStatus;
+        private System.Windows.Forms.DataGridViewLinkColumn colFix;
         private System.Windows.Forms.DataGridViewButtonColumn colDelete;
         private System.Windows.Forms.GroupBox addGroup;
         private System.Windows.Forms.Label ipLabel;
@@ -52,6 +53,11 @@ namespace HostFileChecker
             this.testButton = new System.Windows.Forms.Button();
             this.loadButton = new System.Windows.Forms.Button();
             this.hostsGrid = new System.Windows.Forms.DataGridView();
+            this.colIp = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colHost = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colResolved = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colStatus = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colFix = new System.Windows.Forms.DataGridViewLinkColumn();
             this.colDelete = new System.Windows.Forms.DataGridViewButtonColumn();
             this.addGroup = new System.Windows.Forms.GroupBox();
             this.addButton = new System.Windows.Forms.Button();
@@ -187,7 +193,13 @@ namespace HostFileChecker
             this.hostsGrid.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             this.hostsGrid.ColumnHeadersHeight = 36;
             this.hostsGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            this.hostsGrid.AutoGenerateColumns = false;
             this.hostsGrid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.colIp,
+            this.colHost,
+            this.colResolved,
+            this.colStatus,
+            this.colFix,
             this.colDelete});
             dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Window;
@@ -212,9 +224,52 @@ namespace HostFileChecker
             this.hostsGrid.TabIndex = 0;
             this.hostsGrid.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.hostsGrid_CellContentClick);
             this.hostsGrid.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.hostsGrid_CellFormatting);
-            // 
+            this.hostsGrid.CellToolTipTextNeeded += new System.Windows.Forms.DataGridViewCellToolTipTextNeededEventHandler(this.hostsGrid_CellToolTipTextNeeded);
+            //
+            // colIp
+            //
+            this.colIp.DataPropertyName = "IpAddress";
+            this.colIp.HeaderText = "IP Address";
+            this.colIp.Name = "colIp";
+            this.colIp.ReadOnly = true;
+            this.colIp.FillWeight = 18F;
+            //
+            // colHost
+            //
+            this.colHost.DataPropertyName = "Hostname";
+            this.colHost.HeaderText = "Hostname";
+            this.colHost.Name = "colHost";
+            this.colHost.ReadOnly = true;
+            this.colHost.FillWeight = 32F;
+            //
+            // colResolved
+            //
+            this.colResolved.DataPropertyName = "ResolvedIp";
+            this.colResolved.HeaderText = "Resolved IP";
+            this.colResolved.Name = "colResolved";
+            this.colResolved.ReadOnly = true;
+            this.colResolved.FillWeight = 18F;
+            //
+            // colStatus
+            //
+            this.colStatus.DataPropertyName = "Status";
+            this.colStatus.HeaderText = "Status";
+            this.colStatus.Name = "colStatus";
+            this.colStatus.ReadOnly = true;
+            this.colStatus.FillWeight = 14F;
+            //
+            // colFix
+            //
+            this.colFix.HeaderText = "";
+            this.colFix.Name = "colFix";
+            this.colFix.FillWeight = 12F;
+            this.colFix.LinkBehavior = System.Windows.Forms.LinkBehavior.HoverUnderline;
+            this.colFix.LinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(33)))), ((int)(((byte)(115)))), ((int)(((byte)(191)))));
+            this.colFix.ActiveLinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(80)))), ((int)(((byte)(30)))));
+            this.colFix.TrackVisitedState = false;
+            //
             // colDelete
-            // 
+            //
             dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
             dataGridViewCellStyle3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             dataGridViewCellStyle3.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);

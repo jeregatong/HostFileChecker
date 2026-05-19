@@ -37,6 +37,8 @@ namespace HostFileChecker
             public string Status { get; set; }
             public int OriginalLineIndex { get; set; } = -1;
             public bool Deleted { get; set; }
+            public string PendingNewIp { get; set; }
+            public string LastLookupOutput { get; set; }
         }
 
         // ---------- Load ----------
@@ -110,6 +112,7 @@ namespace HostFileChecker
 
                     var resolved = await NslookupAsync(entry.Hostname);
                     entry.ResolvedIp = resolved.Address ?? "";
+                    entry.LastLookupOutput = resolved.Raw;
 
                     if (resolved.Error != null)
                     {
@@ -145,7 +148,7 @@ namespace HostFileChecker
             }
         }
 
-        private async Task<(string Address, string Error)> NslookupAsync(string hostname)
+        private async Task<(string Address, string Error, string Raw)> NslookupAsync(string hostname)
         {
             return await Task.Run(() =>
             {
@@ -165,48 +168,79 @@ namespace HostFileChecker
                         string stderr = p.StandardError.ReadToEnd();
                         p.WaitForExit(8000);
 
-                        if (Regex.IsMatch(stdout + stderr, @"can't find|Non-existent|NXDOMAIN", RegexOptions.IgnoreCase))
-                            return (Address: (string)null, Error: "Not found");
+                        string combined = stdout + (string.IsNullOrEmpty(stderr) ? "" : "\n--- stderr ---\n" + stderr);
 
-                        // Skip the DNS server header — capture Address lines after "Name:"
+                        if (Regex.IsMatch(combined, @"can't find|Non-existent|NXDOMAIN|does not exist", RegexOptions.IgnoreCase))
+                            return (Address: (string)null, Error: "Not found", Raw: combined);
+
+                        if (Regex.IsMatch(combined, @"timed[- ]out|timeout was|Request to .* timed-out", RegexOptions.IgnoreCase))
+                            return (Address: (string)null, Error: "DNS timeout", Raw: combined);
+
+                        if (Regex.IsMatch(combined, @"Server failed|SERVFAIL|REFUSED|No response from server", RegexOptions.IgnoreCase))
+                            return (Address: (string)null, Error: "DNS server error", Raw: combined);
+
+                        // Capture Address lines after "Name:" (skipping the leading DNS server header block).
                         var lines = stdout.Replace("\r", "").Split('\n');
                         bool pastNameMarker = false;
+                        bool capturingMultiline = false;
                         string firstAddress = null;
+
                         foreach (var raw in lines)
                         {
                             var trimmed = raw.Trim();
+
                             if (trimmed.StartsWith("Name:", StringComparison.OrdinalIgnoreCase))
                             {
                                 pastNameMarker = true;
+                                capturingMultiline = false;
                                 continue;
                             }
                             if (!pastNameMarker) continue;
+
+                            if (trimmed.StartsWith("Aliases:", StringComparison.OrdinalIgnoreCase))
+                            {
+                                capturingMultiline = false;
+                                continue;
+                            }
 
                             if (trimmed.StartsWith("Address:", StringComparison.OrdinalIgnoreCase) ||
                                 trimmed.StartsWith("Addresses:", StringComparison.OrdinalIgnoreCase))
                             {
                                 var colon = trimmed.IndexOf(':');
                                 var value = trimmed.Substring(colon + 1).Trim();
-                                if (!string.IsNullOrEmpty(value) && firstAddress == null)
+                                if (!string.IsNullOrEmpty(value))
                                 {
-                                    firstAddress = value;
+                                    if (firstAddress == null) firstAddress = value;
+                                    capturingMultiline = true; // following lines may carry more IPs
                                 }
+                                else
+                                {
+                                    capturingMultiline = true; // IPs will be on subsequent lines
+                                }
+                                continue;
                             }
-                            else if (pastNameMarker && Regex.IsMatch(trimmed, @"^[0-9A-Fa-f\.:]+$") && firstAddress != null)
+
+                            if (string.IsNullOrEmpty(trimmed))
                             {
-                                // Additional address on continuation line — keep the first match.
+                                capturingMultiline = false;
+                                continue;
+                            }
+
+                            if (capturingMultiline && Regex.IsMatch(trimmed, @"^[0-9A-Fa-f\.:]+$"))
+                            {
+                                if (firstAddress == null) firstAddress = trimmed;
                             }
                         }
 
                         if (firstAddress == null)
-                            return (Address: (string)null, Error: "No address in output");
+                            return (Address: (string)null, Error: "No address in output", Raw: combined);
 
-                        return (Address: firstAddress, Error: (string)null);
+                        return (Address: firstAddress, Error: (string)null, Raw: combined);
                     }
                 }
                 catch (Exception ex)
                 {
-                    return (Address: (string)null, Error: ex.Message);
+                    return (Address: (string)null, Error: ex.Message, Raw: ex.ToString());
                 }
             });
         }
@@ -273,8 +307,25 @@ namespace HostFileChecker
 
         private void hostsGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex != colDelete.Index) return;
-            if (e.RowIndex >= _entries.Count) return;
+            if (e.RowIndex < 0 || e.RowIndex >= _entries.Count) return;
+
+            if (e.ColumnIndex == colFix.Index)
+            {
+                ApplyFixForRow(e.RowIndex);
+                return;
+            }
+
+            if (e.ColumnIndex == colStatus.Index)
+            {
+                var clicked = _entries[e.RowIndex];
+                if (!string.IsNullOrEmpty(clicked.LastLookupOutput))
+                {
+                    ShowLookupOutput(clicked);
+                }
+                return;
+            }
+
+            if (e.ColumnIndex != colDelete.Index) return;
 
             var entry = _entries[e.RowIndex];
             if (entry.Deleted) return;
@@ -310,6 +361,30 @@ namespace HostFileChecker
         }
 
         private readonly List<HostEntry> _tombstones = new List<HostEntry>();
+
+        private void ApplyFixForRow(int rowIndex)
+        {
+            var entry = _entries[rowIndex];
+            if (entry.PendingNewIp != null) return;
+            if (entry.Status != "Mismatch") return;
+            if (string.IsNullOrEmpty(entry.ResolvedIp)) return;
+            if (entry.OriginalLineIndex < 0) return;
+
+            var result = MessageBox.Show(this,
+                "Comment out the existing hosts entry and insert a new line below it?\n\n" +
+                "  Host:     " + entry.Hostname + "\n" +
+                "  Current:  " + entry.IpAddress + "\n" +
+                "  New:      " + entry.ResolvedIp + "\n\n" +
+                "Click \"Save Changes\" afterwards to write the hosts file.",
+                "Apply Fix", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+
+            if (result != DialogResult.OK) return;
+
+            entry.PendingNewIp = entry.ResolvedIp;
+            _dirty = true;
+            hostsGrid.InvalidateRow(rowIndex);
+            SetStatus("Fix staged for " + entry.Hostname + " — click \"Save Changes\" to apply.");
+        }
 
         private string PromptInput(string title, string message, string defaultValue)
         {
@@ -398,10 +473,24 @@ namespace HostFileChecker
                     .Where(t => t.OriginalLineIndex >= 0)
                     .Select(t => t.OriginalLineIndex));
 
+                var fixes = _entries
+                    .Where(x => x.PendingNewIp != null && x.OriginalLineIndex >= 0 && !x.Deleted)
+                    .ToDictionary(x => x.OriginalLineIndex, x => x);
+
+                string fixStamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+
                 var output = new List<string>();
                 for (int i = 0; i < _rawLines.Count; i++)
                 {
                     if (deletedIndexes.Contains(i)) continue;
+
+                    if (fixes.TryGetValue(i, out var fixEntry))
+                    {
+                        output.Add("# " + _rawLines[i] + "  # auto-fixed " + fixStamp);
+                        output.Add(fixEntry.PendingNewIp + "\t" + fixEntry.Hostname);
+                        continue;
+                    }
+
                     output.Add(_rawLines[i]);
                 }
 
@@ -416,13 +505,22 @@ namespace HostFileChecker
                 _tombstones.Clear();
                 foreach (var entry in _entries)
                 {
+                    if (entry.PendingNewIp != null)
+                    {
+                        entry.IpAddress = entry.PendingNewIp;
+                        entry.PendingNewIp = null;
+                        entry.Status = "Fixed";
+                    }
+
                     if (entry.OriginalLineIndex == -1)
                     {
-                        entry.OriginalLineIndex = output.FindIndex(l =>
-                            l.IndexOf(entry.IpAddress, StringComparison.Ordinal) >= 0 &&
-                            l.IndexOf(entry.Hostname, StringComparison.Ordinal) >= 0);
                         entry.Status = "Saved";
                     }
+
+                    entry.OriginalLineIndex = output.FindIndex(l =>
+                        !l.TrimStart().StartsWith("#") &&
+                        l.IndexOf(entry.IpAddress, StringComparison.Ordinal) >= 0 &&
+                        l.IndexOf(entry.Hostname, StringComparison.Ordinal) >= 0);
                 }
                 _dirty = false;
                 hostsGrid.Refresh();
@@ -446,9 +544,30 @@ namespace HostFileChecker
         private void hostsGrid_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0 || e.RowIndex >= _entries.Count) return;
-            if (e.ColumnIndex != colStatus.Index) return;
 
             var entry = _entries[e.RowIndex];
+
+            if (e.ColumnIndex == colFix.Index)
+            {
+                if (entry.PendingNewIp != null)
+                {
+                    e.Value = "Pending save";
+                    e.FormattingApplied = true;
+                }
+                else if (entry.Status == "Mismatch" && !string.IsNullOrEmpty(entry.ResolvedIp) && entry.OriginalLineIndex >= 0)
+                {
+                    e.Value = "Apply fix";
+                    e.FormattingApplied = true;
+                }
+                else
+                {
+                    e.Value = "";
+                    e.FormattingApplied = true;
+                }
+                return;
+            }
+
+            if (e.ColumnIndex != colStatus.Index) return;
             if (entry.Status == null) return;
 
             if (entry.Status == "Match")
@@ -477,6 +596,100 @@ namespace HostFileChecker
         }
 
         // ---------- Helpers ----------
+
+        private void hostsGrid_CellToolTipTextNeeded(object sender, DataGridViewCellToolTipTextNeededEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.RowIndex >= _entries.Count) return;
+            if (e.ColumnIndex != colStatus.Index) return;
+
+            var entry = _entries[e.RowIndex];
+            if (string.IsNullOrEmpty(entry.LastLookupOutput)) return;
+
+            string preview = entry.LastLookupOutput.Trim();
+            if (preview.Length > 1500) preview = preview.Substring(0, 1500) + "...";
+            e.ToolTipText = preview + "\n\n(Click status to view full output)";
+        }
+
+        private void ShowLookupOutput(HostEntry entry)
+        {
+            using (var dlg = new Form())
+            {
+                dlg.Text = "nslookup output — " + entry.Hostname;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.FormBorderStyle = FormBorderStyle.Sizable;
+                dlg.MinimizeBox = false;
+                dlg.MaximizeBox = true;
+                dlg.ClientSize = new Size(640, 380);
+                dlg.Font = new Font("Segoe UI", 9.5F);
+                dlg.BackColor = Color.White;
+
+                var summary = new Label
+                {
+                    Text = "Hosts entry:  " + entry.IpAddress + "    " + entry.Hostname +
+                           "\nResolved IP:  " + (string.IsNullOrEmpty(entry.ResolvedIp) ? "(none)" : entry.ResolvedIp) +
+                           "\nStatus:       " + entry.Status,
+                    Dock = DockStyle.Top,
+                    Height = 64,
+                    Padding = new Padding(12, 10, 12, 6),
+                    ForeColor = Color.FromArgb(40, 50, 60)
+                };
+
+                var tb = new TextBox
+                {
+                    Text = entry.LastLookupOutput ?? "(no output captured)",
+                    Multiline = true,
+                    ReadOnly = true,
+                    ScrollBars = ScrollBars.Both,
+                    WordWrap = false,
+                    Dock = DockStyle.Fill,
+                    Font = new Font("Consolas", 9.5F),
+                    BackColor = Color.FromArgb(250, 252, 254),
+                    BorderStyle = BorderStyle.FixedSingle
+                };
+
+                var buttonPanel = new Panel { Dock = DockStyle.Bottom, Height = 48, Padding = new Padding(12, 8, 12, 8) };
+
+                var copy = new Button
+                {
+                    Text = "Copy",
+                    Size = new Size(90, 30),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(230, 232, 236),
+                    ForeColor = Color.FromArgb(40, 50, 60),
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+                copy.FlatAppearance.BorderSize = 0;
+                copy.Click += (s, a) => { try { Clipboard.SetText(tb.Text); } catch { } };
+
+                var close = new Button
+                {
+                    Text = "Close",
+                    DialogResult = DialogResult.OK,
+                    Size = new Size(90, 30),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(33, 115, 191),
+                    ForeColor = Color.White,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+                close.FlatAppearance.BorderSize = 0;
+
+                buttonPanel.Controls.Add(close);
+                buttonPanel.Controls.Add(copy);
+                close.Location = new Point(buttonPanel.ClientSize.Width - close.Width - 12, 8);
+                copy.Location = new Point(close.Left - copy.Width - 8, 8);
+                buttonPanel.Resize += (s, a) =>
+                {
+                    close.Location = new Point(buttonPanel.ClientSize.Width - close.Width - 12, 8);
+                    copy.Location = new Point(close.Left - copy.Width - 8, 8);
+                };
+
+                dlg.Controls.Add(tb);
+                dlg.Controls.Add(buttonPanel);
+                dlg.Controls.Add(summary);
+                dlg.AcceptButton = close;
+                dlg.ShowDialog(this);
+            }
+        }
 
         private void SetStatus(string text)
         {
