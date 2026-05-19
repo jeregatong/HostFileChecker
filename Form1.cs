@@ -24,7 +24,54 @@ namespace HostFileChecker
         public Form1()
         {
             InitializeComponent();
+            SetupGridColumns();
             hostsGrid.DataSource = _entries;
+        }
+
+        private void SetupGridColumns()
+        {
+            hostsGrid.AutoGenerateColumns = false;
+            hostsGrid.ScrollBars = ScrollBars.Vertical;
+
+            colIp = new DataGridViewTextBoxColumn
+            {
+                Name = "colIp",
+                HeaderText = "IP Address",
+                DataPropertyName = "IpAddress",
+                ReadOnly = true,
+                FillWeight = 20F
+            };
+            colHost = new DataGridViewTextBoxColumn
+            {
+                Name = "colHost",
+                HeaderText = "Hostname",
+                DataPropertyName = "Hostname",
+                ReadOnly = true,
+                FillWeight = 32F
+            };
+            colResolved = new DataGridViewTextBoxColumn
+            {
+                Name = "colResolved",
+                HeaderText = "Resolved IP",
+                DataPropertyName = "ResolvedIp",
+                ReadOnly = true,
+                FillWeight = 18F
+            };
+            colStatus = new DataGridViewTextBoxColumn
+            {
+                Name = "colStatus",
+                HeaderText = "Status",
+                DataPropertyName = "Status",
+                ReadOnly = true,
+                FillWeight = 18F
+            };
+
+            colFix.Width = 100;
+
+            hostsGrid.Columns.Insert(0, colIp);
+            hostsGrid.Columns.Insert(1, colHost);
+            hostsGrid.Columns.Insert(2, colResolved);
+            hostsGrid.Columns.Insert(3, colStatus);
         }
 
         // ---------- Model ----------
@@ -596,6 +643,52 @@ namespace HostFileChecker
         }
 
         // ---------- Helpers ----------
+
+        private void hostsGrid_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            if (e.ColumnIndex != colDelete.Index) return;
+
+            bool selected = (e.State & DataGridViewElementStates.Selected) != 0;
+
+            Color cellBack = selected
+                ? Color.FromArgb(220, 232, 245)
+                : (e.RowIndex % 2 == 0
+                    ? Color.White
+                    : Color.FromArgb(250, 252, 254));
+
+            using (var bg = new SolidBrush(cellBack))
+                e.Graphics.FillRectangle(bg, e.CellBounds);
+
+            int padX = 8, padY = 5;
+            var btn = new Rectangle(
+                e.CellBounds.X + padX,
+                e.CellBounds.Y + padY,
+                e.CellBounds.Width - (padX * 2),
+                e.CellBounds.Height - (padY * 2));
+
+            if (btn.Width > 4 && btn.Height > 4)
+            {
+                Color btnColor = selected
+                    ? Color.FromArgb(190, 50, 50)
+                    : Color.FromArgb(220, 70, 70);
+
+                using (var br = new SolidBrush(btnColor))
+                    e.Graphics.FillRectangle(br, btn);
+
+                using (var f = new Font("Segoe UI Semibold", 9F, FontStyle.Bold))
+                using (var tb = new SolidBrush(Color.White))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                {
+                    e.Graphics.DrawString("X", f, tb, btn, sf);
+                }
+            }
+
+            using (var pen = new Pen(Color.FromArgb(225, 230, 236)))
+                e.Graphics.DrawLine(pen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right - 1, e.CellBounds.Bottom - 1);
+
+            e.Handled = true;
+        }
 
         private void hostsGrid_CellToolTipTextNeeded(object sender, DataGridViewCellToolTipTextNeededEventArgs e)
         {
