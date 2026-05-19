@@ -1,0 +1,10 @@
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\bin\Debug\HostFileChecker.exe.config
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\bin\Debug\HostFileChecker.exe
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\bin\Debug\HostFileChecker.pdb
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\obj\Debug\HostFileChecker.csproj.AssemblyReference.cache
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\obj\Debug\HostFileChecker.Form1.resources
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\obj\Debug\HostFileChecker.Properties.Resources.resources
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\obj\Debug\HostFileChecker.csproj.GenerateResource.cache
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\obj\Debug\HostFileChecker.csproj.CoreCompileInputs.cache
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\obj\Debug\HostFileChecker.exe
+C:\Users\Jeremiah Gatong\OneDrive\Desktop\Demo\HostFileChecker\HostFileChecker\obj\Debug\HostFileChecker.pdb
